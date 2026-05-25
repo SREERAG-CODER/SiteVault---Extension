@@ -44,7 +44,7 @@ window.addEventListener('load', () => {
     
     });
     //Close Panel When Clicking Outside
-    Overlay.addEventListener('click', () => {
+    overlay.addEventListener('click', () => {
         closePanel();
     });
 
