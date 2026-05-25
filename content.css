@@ -1,68 +1,86 @@
-/* ---- FLOATING TAB (the trigger on the left edge) ---- */
+/* ---- TAB (morphs into panel on click) ---- */
 #sitevault-tab {
   position: fixed;
-  left: -24px;          
-  top: 47%;
+  left: -34px;
+  top: 50%;
   transform: translateY(-50%);
   z-index: 999999;
-
-  width: 26px;
-  height: 56px;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 80px;
   background: rgba(6, 134, 255, 0.48);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 0 10px 10px 0;
   cursor: pointer;
+  overflow: hidden;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
-  transition: left 0.3s ease, background 0.2s ease;
+  transition: 
+    left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    top 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.3s ease;
 }
 
 #sitevault-tab:hover {
   left: 0;
-  background: rgba(6, 134, 255, 0.48);
+  background: rgba(6, 134, 255, 0.58);
 }
 
-#sitevault-label {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 10px;
-    font-weight: 600;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    transform: rotate(180deg);
-    white-space: nowrap;
-}
-/* ---- PANEL ---- */
-#sitevault-panel {
-  position: fixed;
-  top: 28%;
+/* ---- MORPHED STATE (tab becomes full panel) ---- */
+#sitevault-tab.open {
   left: 0;
+  top: 0;
+  transform: translateY(0);
   width: 33vw;
-  height: 40vh;
-  z-index: 999998;
+  height: 100vh;
+  border-radius: 0 16px 16px 0;
+  background: rgba(18, 18, 28, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  cursor: default;
+}
 
-  background: rgba(18, 18, 28, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* ---- LABEL (visible as tab, hidden as panel) ---- */
+#sitevault-label {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
 
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+#sitevault-tab.open #sitevault-label {
+  opacity: 0;  /* hides when morphed into panel */
+}
 
-  transform: translateX(-100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
+/* ---- PANEL CONTENT (hidden as tab, visible as panel) ---- */
+#sitevault-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  transition: opacity 0.2s ease 0.25s;  /* fades in after morph finishes */
 }
 
-#sitevault-panel.open {
-  transform: translateX(0);
+#sitevault-tab.open #sitevault-content {
+  opacity: 1;
+  pointer-events: all;
 }
 
 /* ---- PANEL HEADER ---- */
@@ -72,12 +90,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-#sitevault-header img {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
 }
 
 #sitevault-header h1 {
@@ -98,14 +110,14 @@
   font-size: 14px;
 }
 
-/* ---- OVERLAY (dims the page behind panel) ---- */
+/* ---- OVERLAY ---- */
 #sitevault-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 999997;
+  z-index: 999998;
 
   background: rgba(0, 0, 0, 0.3);
   opacity: 0;
