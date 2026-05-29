@@ -12,7 +12,7 @@ window.addEventListener('load', () => {
     <span id="sitevault-label">SiteVault</span>
     <div id="sitevault-content">
       <div id="sitevault-header">
-        <h1>SiteVault</h1>
+        <span id="pro-tab">PRO</span>
       </div>
       <div id="sitevault-body">
         Your folders will appear here.
@@ -20,6 +20,14 @@ window.addEventListener('load', () => {
     </div>
   `
   document.body.appendChild(tab)
+
+  const proTab = document.getElementById('pro-tab')
+  // ---- PRO TAB CLICK ----
+  proTab.addEventListener('click', (e) => {
+    e.stopPropagation() // prevent tab click event
+    // open the pro page in a new tab
+    window.open('https://sitevault.app/pricing', '_blank')
+  })
 
   // ---- OPEN / CLOSE ----
   let isOpen = false
