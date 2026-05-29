@@ -12,6 +12,8 @@ window.addEventListener('load', () => {
     <span id="sitevault-label">SiteVault</span>
     <div id="sitevault-content">
       <div id="sitevault-header">
+      <div id="sitevault-header-right">
+        <input type="text" id="sitevault-search" placeholder="Search..." />
         <span id="pro-tab">PRO</span>
       </div>
       <div id="sitevault-body">
