@@ -66,18 +66,22 @@ window.addEventListener('load', () => {
     isOpen = false
   }
 
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === 'togglePanel') {
+      if (isOpen) {
+        closePanel()
+      } else {
+        openPanel()
+      }
+    }
+  })
+
   tab.addEventListener('click', () => {
     if (!isOpen) openPanel()
   })
 
   overlay.addEventListener('click', () => {
     closePanel()
-  })
-
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === 'setPanelSize') {
-      if (isOpen) tab.style.width = message.value + 'vw'
-    }
   })
 
 })
