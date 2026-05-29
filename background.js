@@ -1,3 +1,5 @@
-// background.js
-// runs silently in the background
-// nothing here yet — will add context menus, shortcuts
+chrome.commands.onCommand.addListener((command) => {
+    if (command === 'toggle-sitevault') {
+        console.log('Toggling SiteVault panel');
+    }    
+});

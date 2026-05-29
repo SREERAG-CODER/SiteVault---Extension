@@ -27,5 +27,14 @@
       "js": ["content.js"],
       "css": ["content.css"]
     }
-  ]
+  ],
+  "commands": {
+    "toggle-sitevault": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Toggle SiteVault"
+    }
+  }
 }
