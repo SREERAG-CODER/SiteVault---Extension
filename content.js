@@ -11,24 +11,44 @@ window.addEventListener('load', () => {
   tab.innerHTML = `
     <span id="sitevault-label">SiteVault</span>
     <div id="sitevault-content">
+
       <div id="sitevault-header">
-      <div id="sitevault-header-right">
-        <input type="text" id="sitevault-search" placeholder="Search..." />
-        <span id="pro-tab">PRO</span>
+        <div id="sync-icon">
+          <svg id="sync-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"/>
+            <path d="M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/>
+            <path d="M20.49 15a9 9 0 01-14.85 3.36L1 14"/>
+          </svg>
+        </div>
+        <div id="sitevault-header-right">
+          <input type="text" id="sitevault-search" placeholder="Search..." />
+          <span id="pro-tab">PRO</span>
+        </div>
       </div>
+
       <div id="sitevault-body">
         Your folders will appear here.
       </div>
+
     </div>
   `
   document.body.appendChild(tab)
 
-  const proTab = document.getElementById('pro-tab')
   // ---- PRO TAB CLICK ----
+  const proTab = document.getElementById('pro-tab')
   proTab.addEventListener('click', (e) => {
-    e.stopPropagation() // prevent tab click event
-    // open the pro page in a new tab
+    e.stopPropagation()
     window.open('https://sitevault.app/pricing', '_blank')
+  })
+
+  // ---- SYNC ICON CLICK (simulate sync animation) ----
+  const syncIcon = document.getElementById('sync-icon')
+  const syncSvg = document.getElementById('sync-svg')
+  syncIcon.addEventListener('click', (e) => {
+    e.stopPropagation()
+    syncSvg.classList.add('spinning')
+    setTimeout(() => syncSvg.classList.remove('spinning'), 1500)
   })
 
   // ---- OPEN / CLOSE ----
@@ -46,17 +66,14 @@ window.addEventListener('load', () => {
     isOpen = false
   }
 
-  // click tab to open only when closed
   tab.addEventListener('click', () => {
     if (!isOpen) openPanel()
   })
 
-  // click overlay to close
   overlay.addEventListener('click', () => {
     closePanel()
   })
 
-  // listen for settings changes from popup
   chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'setPanelSize') {
       if (isOpen) tab.style.width = message.value + 'vw'

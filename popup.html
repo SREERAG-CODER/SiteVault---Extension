@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SiteVault Settings</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="container">
+
+      <!-- header -->
+      <div id="header">
+        <img src="icons/icon48.png" alt="SiteVault" />
+        <h1>SiteVault</h1>
+      </div>
+
+      <!-- theme toggle -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Light Mode</span>
+          <span class="setting-desc">Switch to light theme</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="theme-toggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- keyboard shortcut -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Open Panel</span>
+          <span class="setting-desc">Toggle SiteVault</span>
+        </div>
+        <div class="shortcut-keys">
+          <kbd>Alt</kbd>
+          <span>+</span>
+          <kbd>S</kbd>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div id="footer">SiteVault v1.0.0</div>
+
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
