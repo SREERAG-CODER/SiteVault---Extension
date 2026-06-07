@@ -74,6 +74,268 @@ const Storage = {
 }
 
 // ================================================================
+// AUTH MODULE
+// Paste this block into content.js, near the top after the LIMITS
+// and Storage sections but before renderFolders.
+// ================================================================
+
+const API_URL = 'https://your-app-name.onrender.com' // ← update after deploying
+
+// ----------------------------------------------------------------
+// Auth storage helpers
+// ----------------------------------------------------------------
+const Auth = {
+  getSession() {
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(['authToken', 'authUser'], (data) => {
+        resolve({ token: data.authToken || null, user: data.authUser || null })
+      })
+    })
+  },
+  setSession(token, user) {
+    return new Promise((resolve) => {
+      chrome.storage.sync.set({ authToken: token, authUser: user }, resolve)
+    })
+  },
+  clearSession() {
+    return new Promise((resolve) => {
+      chrome.storage.sync.remove(['authToken', 'authUser'], resolve)
+    })
+  }
+}
+
+// ----------------------------------------------------------------
+// renderAuthScreen(container)
+// Renders the login/signup UI into #sitevault-body
+// ----------------------------------------------------------------
+function renderAuthScreen(container) {
+  container.innerHTML = ''
+
+  // Remove usage bar if somehow present
+  const bar = document.getElementById('sv-usage-bar')
+  if (bar) bar.remove()
+
+  let mode = 'login' // 'login' | 'signup'
+
+  function buildScreen() {
+    container.innerHTML = `
+      <div id="sv-auth-screen">
+
+        <div id="sv-auth-logo">🗄️</div>
+        <div id="sv-auth-title">SiteVault</div>
+        <div id="sv-auth-subtitle">Sign in to save and sync your bookmarks</div>
+
+        <!-- Google -->
+        <button id="sv-google-btn">
+          <svg class="sv-google-icon" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path fill="none" d="M0 0h48v48H0z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <div id="sv-auth-divider"><span>or ${mode === 'login' ? 'sign in' : 'sign up'} with email</span></div>
+
+        <div id="sv-auth-form">
+          ${mode === 'signup' ? `<input class="sv-auth-input" id="sv-auth-name" type="text" placeholder="Your name" autocomplete="name" />` : ''}
+          <input class="sv-auth-input" id="sv-auth-email" type="email" placeholder="Email address" autocomplete="email" />
+          <input class="sv-auth-input" id="sv-auth-password" type="password" placeholder="Password ${mode === 'signup' ? '(min 8 chars)' : ''}" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" />
+          <div id="sv-auth-error"></div>
+          <button class="sv-auth-btn" id="sv-auth-submit">
+            ${mode === 'login' ? 'Sign in' : 'Create account'}
+          </button>
+        </div>
+
+        <div id="sv-auth-toggle">
+          ${mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+          <button id="sv-auth-toggle-btn">${mode === 'login' ? 'Sign up' : 'Sign in'}</button>
+        </div>
+
+      </div>
+    `
+
+    // ---- Helpers ----
+    const errorEl = document.getElementById('sv-auth-error')
+    const submitBtn = document.getElementById('sv-auth-submit')
+
+    function setError(msg) { errorEl.textContent = msg }
+    function setLoading(on) {
+      submitBtn.disabled = on
+      submitBtn.textContent = on ? 'Please wait...' : (mode === 'login' ? 'Sign in' : 'Create account')
+    }
+
+    function onSuccess(user) {
+      // Swap auth screen for the main panel
+      renderMainPanel(container, user)
+    }
+
+    // ---- Google ----
+    document.getElementById('sv-google-btn').addEventListener('click', (e) => {
+      e.stopPropagation()
+      const btn = document.getElementById('sv-google-btn')
+      btn.disabled = true
+      btn.querySelector('span') && (btn.lastChild.textContent = 'Signing in...')
+      setError('')
+
+      chrome.runtime.sendMessage({ action: 'googleSignIn' }, (res) => {
+        btn.disabled = false
+        if (res?.error) { setError(res.error); return }
+        if (res?.success) onSuccess(res.user)
+      })
+    })
+
+    // ---- Email submit ----
+    document.getElementById('sv-auth-submit').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      setError('')
+
+      const email = document.getElementById('sv-auth-email')?.value.trim()
+      const password = document.getElementById('sv-auth-password')?.value
+      const name = document.getElementById('sv-auth-name')?.value.trim()
+
+      if (!email || !password) { setError('Please fill in all fields'); return }
+
+      setLoading(true)
+
+      try {
+        const endpoint = mode === 'login' ? '/auth/login' : '/auth/signup'
+        const body = mode === 'login' ? { email, password } : { email, password, name }
+
+        const res = await fetch(`${API_URL}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        const data = await res.json()
+
+        if (!res.ok) { setError(data.error || 'Something went wrong'); setLoading(false); return }
+
+        await Auth.setSession(data.token, data.user)
+        onSuccess(data.user)
+      } catch {
+        setError('Network error — check your connection')
+        setLoading(false)
+      }
+    })
+
+    // Allow Enter key to submit
+    container.querySelectorAll('.sv-auth-input').forEach(input => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('sv-auth-submit').click()
+        e.stopPropagation()
+      })
+    })
+
+    // ---- Toggle login/signup ----
+    document.getElementById('sv-auth-toggle-btn').addEventListener('click', (e) => {
+      e.stopPropagation()
+      mode = mode === 'login' ? 'signup' : 'login'
+      buildScreen()
+    })
+  }
+
+  buildScreen()
+}
+
+// ----------------------------------------------------------------
+// renderMainPanel(container, user)
+// Called after successful auth — renders the folder view + updates header
+// ----------------------------------------------------------------
+function renderMainPanel(container, user) {
+  // Update the header to show user info instead of just sync icon
+  const headerRight = document.getElementById('sitevault-header-right')
+  if (headerRight) {
+    // Build avatar
+    const avatarHTML = user.avatar_url
+      ? `<img id="sv-user-avatar" src="${escapeHTML(user.avatar_url)}" alt="" />`
+      : `<div id="sv-user-avatar-fallback">${(user.name || user.email || '?').charAt(0).toUpperCase()}</div>`
+
+    headerRight.innerHTML = `
+      <input type="text" id="sitevault-search" placeholder="Search folders..." />
+      <div id="sv-user-area">
+        ${avatarHTML}
+        <button id="sv-signout-btn">Sign out</button>
+      </div>
+    `
+
+    document.getElementById('sv-signout-btn').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      chrome.runtime.sendMessage({ action: 'signOut' }, () => {
+        renderAuthScreen(container)
+        // Reset header
+        const hr = document.getElementById('sitevault-header-right')
+        if (hr) {
+          hr.innerHTML = `
+            <input type="text" id="sitevault-search" placeholder="Search folders..." />
+            <span id="pro-tab">PRO</span>
+          `
+          document.getElementById('pro-tab').addEventListener('click', (e) => {
+            e.stopPropagation()
+            window.open('https://sitevault.app/pricing', '_blank')
+          })
+          bindSearch(container)
+        }
+      })
+    })
+
+    bindSearch(container)
+  }
+
+  // Load folders
+  Storage.getFolders().then(folders => {
+    allFolders = folders
+    renderFolders(allFolders, container)
+  })
+}
+
+// ----------------------------------------------------------------
+// bindSearch — wire up the search input after it's rebuilt
+// ----------------------------------------------------------------
+function bindSearch(container) {
+  const searchInput = document.getElementById('sitevault-search')
+  if (!searchInput) return
+  searchInput.addEventListener('input', () => {
+    if (container.querySelector('#sv-folder-grid')) {
+      const filtered = filterFolders(allFolders, searchInput.value)
+      renderFolders(filtered, container)
+    }
+  })
+  searchInput.addEventListener('click', e => e.stopPropagation())
+}
+
+// ================================================================
+// HOW TO WIRE THIS INTO THE MAIN() at the bottom of content.js
+// ================================================================
+// Replace the Storage.getFolders().then(...) block in window.addEventListener('load')
+// with this auth-aware startup:
+//
+//   Auth.getSession().then(({ token, user }) => {
+//     if (token && user) {
+//       renderMainPanel(body, user)
+//     } else {
+//       renderAuthScreen(body)
+//     }
+//   })
+//
+// Also replace the openPanel() function's Storage.getFolders() call with:
+//
+//   function openPanel() {
+//     tab.classList.add('open')
+//     overlay.classList.add('open')
+//     isOpen = true
+//     Auth.getSession().then(({ token, user }) => {
+//       if (token && user) {
+//         renderMainPanel(body, user)
+//       } else {
+//         renderAuthScreen(body)
+//       }
+//     })
+//   }
+
+// ================================================================
 // ---- GET CURRENT TAB INFO ----
 // ================================================================
 function getCurrentTabInfo() {
@@ -185,13 +447,25 @@ function filterFolders(folders, query) {
 
 // ================================================================
 // ---- VIEW: FOLDER GRID ----
+// Replace the entire renderFolders() function in content.js with this.
 // ================================================================
 function renderFolders(folders, container) {
+  // container = #sitevault-body
+
+  // Remove any existing usage bar that was appended to #sitevault-content
+  const existingUsageBar = document.getElementById('sv-usage-bar')
+  if (existingUsageBar) existingUsageBar.remove()
+
   container.innerHTML = ''
+
+  // Folder view wrapper (fills flex body above the pinned usage bar)
+  const folderView = document.createElement('div')
+  folderView.id = 'sv-folder-view'
+  container.appendChild(folderView)
 
   const grid = document.createElement('div')
   grid.id = 'sv-folder-grid'
-  container.appendChild(grid)
+  folderView.appendChild(grid)
 
   folders.forEach(folder => {
     const card = document.createElement('div')
@@ -255,6 +529,8 @@ function renderFolders(folders, container) {
   grid.appendChild(addCard)
 
   // ---- FREE TIER USAGE BAR ----
+  // Appended to #sitevault-content (parent of #sitevault-body), not the body itself,
+  // so it stays pinned at the bottom regardless of grid scroll.
   const allSites = totalSites(folders)
   const usageBar = document.createElement('div')
   usageBar.id = 'sv-usage-bar'
@@ -277,9 +553,9 @@ function renderFolders(folders, container) {
     window.open('https://sitevault.app/pricing', '_blank')
   })
 
-  container.appendChild(usageBar)
+  // Append to #sitevault-content so it's a sibling of #sitevault-body, pinned at bottom
+  document.getElementById('sitevault-content').appendChild(usageBar)
 }
-
 // ================================================================
 // ---- VIEW: SITES INSIDE A FOLDER ----
 // ================================================================

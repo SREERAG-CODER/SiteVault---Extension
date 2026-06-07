@@ -1,4 +1,11 @@
-// ---- TOGGLE PANEL SHORTCUT ----
+// ================================================================
+// CONFIG — update this after deploying to Render
+// ================================================================
+const API_URL = 'https://your-app-name.onrender.com' // ← change this
+
+// ================================================================
+// TOGGLE PANEL SHORTCUT
+// ================================================================
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'toggle-sitevault') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -9,31 +16,25 @@ chrome.commands.onCommand.addListener((command) => {
   }
 })
 
-// ---- IMPORT CHROME BOOKMARKS ----
+// ================================================================
+// MESSAGE HANDLER
+// ================================================================
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+  // ---- IMPORT CHROME BOOKMARKS ----
   if (message.action === 'getBookmarks') {
     chrome.bookmarks.getTree((tree) => {
-      // Chrome's bookmark tree:
-      // tree[0] = root
-      //   children[0] = "Bookmarks Bar"
-      //   children[1] = "Other Bookmarks"
-      //   children[2] = "Mobile Bookmarks" (sometimes)
-
       const folders = []
 
       function processNode(node, parentName) {
-        // it's a folder if it has children
         if (node.children) {
-          // skip root and the top-level Chrome system folders by name
           const skipNames = ['Bookmarks bar', 'Other bookmarks', 'Mobile bookmarks', '']
           const folderName = node.title || parentName
-
           const sites = []
           const subFolders = []
 
           node.children.forEach(child => {
             if (child.url) {
-              // it's a bookmark
               sites.push({
                 id: 's_' + Date.now() + '_' + Math.random().toString(36).slice(2),
                 title: child.title || child.url,
@@ -42,12 +43,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 savedAt: child.dateAdded || Date.now()
               })
             } else if (child.children) {
-              // it's a subfolder — recurse
               subFolders.push(child)
             }
           })
 
-          // add this folder if it has sites OR if it's not a skip-name
           if (!skipNames.includes(node.title)) {
             if (sites.length > 0) {
               folders.push({
@@ -58,8 +57,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               })
             }
           } else {
-            // for system folders (Bookmarks Bar, Other), promote their direct bookmarks
-            // into a "Bookmarks Bar" / "Other Bookmarks" folder only if they have sites
             if (sites.length > 0 && node.title) {
               folders.push({
                 id: 'f_import_' + Date.now() + '_' + Math.random().toString(36).slice(2),
@@ -69,21 +66,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               })
             }
           }
-
-          // always recurse into subfolders
           subFolders.forEach(sub => processNode(sub, sub.title))
-
         }
       }
 
-      // start from root's children (the system-level folders)
       if (tree[0] && tree[0].children) {
         tree[0].children.forEach(node => processNode(node, node.title))
       }
 
       sendResponse({ folders })
     })
-
-    return true // keep message channel open for async response
+    return true
   }
+
+  // ---- GOOGLE SIGN IN ----
+  if (message.action === 'googleSignIn') {
+    // chrome.identity.getAuthToken gets a Google OAuth access token silently
+    // if user is signed into Chrome, or shows the account picker if not.
+    chrome.identity.getAuthToken({ interactive: true }, async (token) => {
+      if (chrome.runtime.lastError || !token) {
+        sendResponse({ error: chrome.runtime.lastError?.message || 'Google sign-in cancelled' })
+        return
+      }
+
+      try {
+        // Send the token to our backend to verify and create/fetch the user
+        const res = await fetch(`${API_URL}/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: token })
+        })
+        const data = await res.json()
+
+        if (!res.ok) {
+          sendResponse({ error: data.error || 'Google sign-in failed' })
+          return
+        }
+
+        // Store token + user in chrome.storage.sync
+        await chrome.storage.sync.set({
+          authToken: data.token,
+          authUser: data.user
+        })
+
+        sendResponse({ success: true, user: data.user })
+      } catch (err) {
+        sendResponse({ error: 'Network error — check your connection' })
+      }
+    })
+    return true // keep channel open for async
+  }
+
+  // ---- SIGN OUT ----
+  if (message.action === 'signOut') {
+    // Remove cached Google token too, so next login shows account picker
+    chrome.identity.getAuthToken({ interactive: false }, (token) => {
+      if (token) {
+        chrome.identity.removeCachedAuthToken({ token }, () => {})
+      }
+    })
+    chrome.storage.sync.remove(['authToken', 'authUser'], () => {
+      sendResponse({ success: true })
+    })
+    return true
+  }
+
 })

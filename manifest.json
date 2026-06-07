@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
   "name": "SiteVault",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A file manager for your browser — organize websites into folders, just like your OS.",
-  "permissions": ["tabs", "storage", "bookmarks"],
+  "permissions": ["tabs", "storage", "bookmarks", "identity"],
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
+  },
   "action": {
     "default_title": "SiteVault Settings",
     "default_popup": "popup.html",

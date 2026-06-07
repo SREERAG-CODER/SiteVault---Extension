@@ -32,15 +32,21 @@
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  width: 33vw;
-  height: auto;
-  max-height: 70vh;
+  width: 26vw;
+  min-width: 260px;
+  max-width: 340px;
+  height: 78vh;
+  max-height: 680px;
+  min-height: 520px;
   border-radius: 16px;
   background: rgba(18, 22, 40, 0.82);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   cursor: default;
   border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ---- LABEL ---- */
@@ -65,11 +71,13 @@
   position: relative;
   top: 0; left: 0;
   width: 100%;
+  height: 100%;
   opacity: 0;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   transition: opacity 0.2s ease 0.15s;
+  overflow: hidden;
 }
 
 #sitevault-tab.open #sitevault-content {
@@ -108,7 +116,7 @@
 #sitevault-header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 #sitevault-search {
@@ -119,7 +127,7 @@
   color: #ffffff;
   font-size: 12px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  width: 160px;
+  width: 120px;
   outline: none;
   transition: background 0.2s, border 0.2s, width 0.2s;
 }
@@ -127,7 +135,7 @@
 #sitevault-search:focus {
   background: rgba(255,255,255,0.12);
   border-color: rgba(255,255,255,0.25);
-  width: 200px;
+  width: 150px;
 }
 
 #pro-tab {
@@ -146,23 +154,44 @@
 #pro-tab:hover { background: rgba(255,255,255,0.22); }
 
 /* ---- BODY ---- */
+/* The body is the flex region between header and usage bar.
+   It grows to fill available space and clips overflow. */
 #sitevault-body {
   display: flex;
   flex-direction: column;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
+/* ================================================================
+   FOLDER VIEW WRAPPER
+   Wraps the scrollable grid. Usage bar sits OUTSIDE this, pinned
+   at the bottom of #sitevault-content.
+   ================================================================ */
+#sv-folder-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 
 /* ---- FOLDER GRID ---- */
+/* Grid scrolls once it exceeds 4 rows (110px * 4 + 6px * 3 gaps = 458px).
+   max-height set to exactly 4 rows + gaps + top padding.
+   4 rows × 110px + 3 gaps × 6px + 12px top + 8px bottom = 458px */
 #sv-folder-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: min-content;
+  grid-auto-rows: 110px;
   align-content: start;
-  gap: 10px;
-  padding: 16px 14px 10px;
+  gap: 6px;
+  padding: 12px 12px 8px;
   overflow-y: auto;
-  max-height: 200px;
+  /* 4 rows visible before scroll kicks in */
+  max-height: calc(4 * 110px + 3 * 6px + 12px + 8px);
+  flex-shrink: 0;
 }
 
 #sv-folder-grid::-webkit-scrollbar { width: 4px; }
@@ -174,12 +203,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14px 8px 12px;
-  border-radius: 12px;
+  padding: 10px 6px 8px;
+  border-radius: 10px;
   cursor: pointer;
   position: relative;
   transition: background 0.15s ease, transform 0.15s ease;
-  gap: 6px;
+  gap: 4px;
+  height: 110px;
+  overflow: hidden;
 }
 
 .sv-folder-card:hover {
@@ -193,8 +224,8 @@
 
 /* ---- FOLDER ICON (SVG wrapper) ---- */
 .sv-folder-icon {
-  width: 80px;
-  height: 68px;
+  width: 56px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -202,20 +233,20 @@
 }
 
 .sv-folder-icon svg {
-  width: 80px;
-  height: 68px;
-  filter: drop-shadow(0 4px 12px rgba(100,140,220,0.3));
+  width: 56px;
+  height: 48px;
+  filter: drop-shadow(0 3px 8px rgba(100,140,220,0.3));
   transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .sv-folder-card:hover .sv-folder-icon svg {
   transform: scale(1.05) translateY(-2px);
-  filter: drop-shadow(0 8px 16px rgba(100,140,220,0.45));
+  filter: drop-shadow(0 6px 12px rgba(100,140,220,0.45));
 }
 
 /* ---- FOLDER NAME ---- */
 .sv-folder-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255,255,255,0.92);
   text-align: center;
@@ -228,7 +259,7 @@
 
 /* ---- SITE COUNT ---- */
 .sv-folder-count {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255,255,255,0.38);
   text-align: center;
 }
@@ -236,8 +267,8 @@
 /* ---- ACTION BUTTONS (hover reveal) ---- */
 .sv-folder-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   display: flex;
   gap: 2px;
   opacity: 0;
@@ -248,10 +279,10 @@
   background: rgba(255,255,255,0.1);
   border: none;
   color: rgba(255,255,255,0.6);
-  font-size: 11px;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  font-size: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -268,7 +299,6 @@
 .sv-add-folder {
   border: 1.5px dashed rgba(255,255,255,0.18);
   cursor: pointer;
-  min-height: 130px;
   justify-content: center;
 }
 
@@ -279,12 +309,12 @@
 }
 
 .sv-add-icon {
-  font-size: 26px;
+  font-size: 22px;
   color: rgba(255,255,255,0.3);
   font-weight: 300;
   line-height: 1;
   transition: color 0.15s;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .sv-add-folder:hover .sv-add-icon {
@@ -304,7 +334,7 @@
   border-radius: 6px;
   padding: 4px 8px;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 11px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   width: 100%;
   outline: none;
@@ -338,233 +368,11 @@
 }
 
 /* ================================================================
-   SITES VIEW
-   ================================================================ */
-
-/* ---- SITES HEADER ---- */
-#sv-sites-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  flex-shrink: 0;
-}
-
-#sv-back-btn {
-  background: rgba(255,255,255,0.08);
-  border: none;
-  color: rgba(255,255,255,0.7);
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
-}
-#sv-back-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
-
-#sv-folder-title {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.9);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#sv-save-tab-btn {
-  background: rgba(6, 134, 255, 0.3);
-  border: 1px solid rgba(6, 134, 255, 0.5);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  padding: 5px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background 0.15s, border 0.15s, transform 0.1s;
-}
-#sv-save-tab-btn:hover {
-  background: rgba(6, 134, 255, 0.5);
-  border-color: rgba(6, 134, 255, 0.8);
-  transform: translateY(-1px);
-}
-#sv-save-tab-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  transform: none;
-}
-
-/* ---- SITES LIST ---- */
-#sv-sites-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-#sv-sites-list::-webkit-scrollbar { width: 4px; }
-#sv-sites-list::-webkit-scrollbar-track { background: transparent; }
-#sv-sites-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
-
-/* ---- SITE ROW ---- */
-.sv-site-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.15s;
-  position: relative;
-}
-.sv-site-row:hover {
-  background: rgba(255,255,255,0.06);
-}
-.sv-site-row:hover .sv-site-delete-btn {
-  opacity: 1;
-}
-
-/* ---- FAVICON ---- */
-.sv-site-favicon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.sv-site-favicon-fallback {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  background: rgba(6, 134, 255, 0.4);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ---- SITE INFO ---- */
-.sv-site-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sv-site-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.88);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sv-site-url {
-  font-size: 10px;
-  color: rgba(255,255,255,0.35);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ---- SITE DELETE ---- */
-.sv-site-delete-btn {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.4);
-  font-size: 11px;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  opacity: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s, opacity 0.15s;
-}
-.sv-site-delete-btn:hover {
-  background: rgba(255,80,80,0.2);
-  color: #ff8080;
-}
-
-/* ---- EMPTY STATE ---- */
-#sv-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 20px;
-  gap: 8px;
-}
-
-#sv-empty-icon {
-  font-size: 32px;
-  margin-bottom: 4px;
-}
-
-#sv-empty-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.5);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-#sv-empty-sub {
-  font-size: 11px;
-  color: rgba(255,255,255,0.25);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-/* ================================================================
-   TOAST
-   ================================================================ */
-#sv-toast {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%) translateY(8px);
-  background: rgba(30, 35, 60, 0.95);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.85);
-  font-size: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  padding: 7px 14px;
-  border-radius: 20px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 10;
-}
-#sv-toast.visible {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* ================================================================
    FREE TIER — USAGE BAR
+   Pinned to bottom of the panel, never scrolls away.
    ================================================================ */
 #sv-usage-bar {
-  margin: 0 14px 14px;
+  margin: 0 12px 12px;
   padding: 10px 12px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.07);
@@ -573,6 +381,9 @@
   flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
+  /* top separator so it feels anchored */
+  border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: 8px;
 }
 
 #sv-usage-row, #sv-usage-row2 {
@@ -630,7 +441,7 @@
 }
 
 .sv-lock-icon {
-  font-size: 24px;
+  font-size: 20px;
   margin-bottom: 2px;
 }
 
@@ -659,14 +470,11 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  max-width: 240px;
+  max-width: 220px;
   text-align: center;
 }
 
-#sv-upgrade-icon {
-  font-size: 36px;
-  margin-bottom: 2px;
-}
+#sv-upgrade-icon { font-size: 36px; margin-bottom: 2px; }
 
 #sv-upgrade-title {
   font-size: 15px;
@@ -696,10 +504,7 @@
   width: 100%;
   transition: background 0.15s, transform 0.1s;
 }
-#sv-upgrade-cta:hover {
-  background: #0576e0;
-  transform: translateY(-1px);
-}
+#sv-upgrade-cta:hover { background: #0576e0; transform: translateY(-1px); }
 
 #sv-upgrade-close {
   background: none;
@@ -712,3 +517,434 @@
   transition: color 0.15s;
 }
 #sv-upgrade-close:hover { color: rgba(255,255,255,0.6); }
+
+/* ================================================================
+   SITES VIEW
+   ================================================================ */
+#sv-sites-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+#sv-back-btn {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.7);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+#sv-back-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+#sv-folder-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#sv-save-tab-btn {
+  background: rgba(6, 134, 255, 0.3);
+  border: 1px solid rgba(6, 134, 255, 0.5);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, border 0.15s, transform 0.1s;
+}
+#sv-save-tab-btn:hover {
+  background: rgba(6, 134, 255, 0.5);
+  border-color: rgba(6, 134, 255, 0.8);
+  transform: translateY(-1px);
+}
+#sv-save-tab-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+#sv-sites-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+#sv-sites-list::-webkit-scrollbar { width: 4px; }
+#sv-sites-list::-webkit-scrollbar-track { background: transparent; }
+#sv-sites-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+.sv-site-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+}
+.sv-site-row:hover { background: rgba(255,255,255,0.06); }
+.sv-site-row:hover .sv-site-delete-btn { opacity: 1; }
+
+.sv-site-favicon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.sv-site-favicon-fallback {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: rgba(6, 134, 255, 0.4);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sv-site-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sv-site-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sv-site-url {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sv-site-delete-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+.sv-site-delete-btn:hover { background: rgba(255,80,80,0.2); color: #ff8080; }
+
+#sv-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  gap: 8px;
+}
+
+#sv-empty-icon { font-size: 32px; margin-bottom: 4px; }
+
+#sv-empty-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#sv-empty-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ================================================================
+   TOAST
+   ================================================================ */
+#sv-toast {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(30, 35, 60, 0.95);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 7px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+#sv-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ================================================================
+   AUTH SCREEN
+   Add this block to the bottom of your existing content.css
+   ================================================================ */
+
+/* ---- AUTH WRAPPER ---- */
+#sv-auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 28px 24px 20px;
+  gap: 0;
+}
+
+/* ---- LOGO AREA ---- */
+#sv-auth-logo {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+#sv-auth-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin-bottom: 4px;
+}
+
+#sv-auth-subtitle {
+  font-size: 12px;
+  color: rgba(255,255,255,0.38);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+/* ---- GOOGLE BUTTON ---- */
+#sv-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #1f1f1f;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.25);
+  margin-bottom: 14px;
+}
+#sv-google-btn:hover {
+  background: #f5f5f5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+#sv-google-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+.sv-google-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ---- DIVIDER ---- */
+#sv-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+#sv-auth-divider::before,
+#sv-auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+#sv-auth-divider span {
+  font-size: 11px;
+  color: rgba(255,255,255,0.28);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: nowrap;
+}
+
+/* ---- EMAIL FORM ---- */
+#sv-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.sv-auth-input {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: #ffffff;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  width: 100%;
+  outline: none;
+  transition: border 0.15s, background 0.15s;
+}
+.sv-auth-input::placeholder { color: rgba(255,255,255,0.25); }
+.sv-auth-input:focus {
+  border-color: rgba(6, 134, 255, 0.5);
+  background: rgba(255,255,255,0.1);
+}
+
+/* ---- PRIMARY BUTTON ---- */
+.sv-auth-btn {
+  width: 100%;
+  background: #0686ff;
+  border: none;
+  border-radius: 9px;
+  padding: 10px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  margin-top: 2px;
+}
+.sv-auth-btn:hover { background: #0576e0; transform: translateY(-1px); }
+.sv-auth-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+/* ---- ERROR MESSAGE ---- */
+#sv-auth-error {
+  font-size: 11px;
+  color: #ff7070;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-align: center;
+  min-height: 16px;
+  margin-top: 2px;
+}
+
+/* ---- TOGGLE LOGIN / SIGNUP ---- */
+#sv-auth-toggle {
+  margin-top: 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-align: center;
+}
+
+#sv-auth-toggle-btn {
+  background: none;
+  border: none;
+  color: rgba(6, 134, 255, 0.9);
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+  transition: color 0.15s;
+}
+#sv-auth-toggle-btn:hover { color: #0686ff; }
+
+/* ---- HEADER USER AREA (shown when logged in) ---- */
+#sv-user-area {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#sv-user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+#sv-user-avatar-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(6, 134, 255, 0.5);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#sv-user-email {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#sv-signout-btn {
+  background: rgba(255,255,255,0.07);
+  border: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 3px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+#sv-signout-btn:hover { background: rgba(255,80,80,0.2); color: #ff8080; }
