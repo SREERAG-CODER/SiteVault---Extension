@@ -28,150 +28,68 @@ const Storage = {
     const folders = (await this.getFolders()).filter(f => f.id !== id)
     await this.saveFolders(folders)
     return folders
+  },
+  async addSite(folderId, site) {
+    const folders = await this.getFolders()
+    const folder = folders.find(f => f.id === folderId)
+    if (folder) {
+      folder.sites.push(site)
+      await this.saveFolders(folders)
+    }
+    return folders
+  },
+  async deleteSite(folderId, siteId) {
+    const folders = await this.getFolders()
+    const folder = folders.find(f => f.id === folderId)
+    if (folder) {
+      folder.sites = folder.sites.filter(s => s.id !== siteId)
+      await this.saveFolders(folders)
+    }
+    return folders
   }
+}
+
+// ---- GET CURRENT TAB INFO ----
+// content scripts can read the current page directly
+function getCurrentTabInfo() {
+  return {
+    title: document.title || window.location.hostname,
+    url: window.location.href,
+    favicon: getFavicon(),
+  }
+}
+
+function getFavicon() {
+  // try link[rel~=icon] variants
+  const selectors = [
+    'link[rel="icon"]',
+    'link[rel="shortcut icon"]',
+    'link[rel="apple-touch-icon"]',
+    'link[rel="apple-touch-icon-precomposed"]',
+  ]
+  for (const sel of selectors) {
+    const el = document.querySelector(sel)
+    if (el && el.href) return el.href
+  }
+  // fallback to /favicon.ico
+  return `${window.location.origin}/favicon.ico`
 }
 
 // ---- FOLDER SVG ----
 function folderSVG() {
   return `
     <svg width="96" height="80" viewBox="0 0 96 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- back shadow layer 3 (deepest) -->
       <rect x="6" y="22" width="78" height="52" rx="5" fill="#5a6ea0" opacity="0.45"/>
-      <!-- back shadow layer 2 -->
       <rect x="3" y="18" width="78" height="52" rx="5" fill="#6a80bb" opacity="0.55"/>
-      <!-- folder back (tab + body back) -->
       <rect x="0" y="24" width="78" height="50" rx="5" fill="#7b93d4"/>
-      <!-- tab -->
       <path d="M0 24 Q0 14 10 14 L30 14 Q36 14 38 20 L78 20 Q78 20 78 24 Z" fill="#7b93d4"/>
-      <!-- folder face -->
       <rect x="0" y="24" width="78" height="50" rx="5" fill="#8faae8"/>
-      <!-- link line rows on face -->
       <rect x="12" y="36" width="54" height="4" rx="2" fill="white" opacity="0.25"/>
       <rect x="12" y="46" width="42" height="4" rx="2" fill="white" opacity="0.18"/>
       <rect x="12" y="56" width="48" height="4" rx="2" fill="white" opacity="0.18"/>
-      <!-- subtle shine on top edge -->
       <rect x="2" y="24" width="74" height="2" rx="1" fill="white" opacity="0.15"/>
     </svg>
   `
-}
-
-// ---- RENDER FOLDERS ----
-function renderFolders(folders, container) {
-  container.innerHTML = ''
-
-  const grid = document.createElement('div')
-  grid.id = 'sv-folder-grid'
-  container.appendChild(grid)
-
-  // render each folder card
-  folders.forEach(folder => {
-    const card = document.createElement('div')
-    card.className = 'sv-folder-card'
-    card.dataset.id = folder.id
-    card.innerHTML = `
-      <div class="sv-folder-icon">${folderSVG()}</div>
-      <div class="sv-folder-name">${escapeHTML(folder.name)}</div>
-      <div class="sv-folder-count">${folder.sites.length} ${folder.sites.length === 1 ? 'site' : 'sites'}</div>
-      <div class="sv-folder-actions">
-        <button class="sv-folder-btn sv-rename-btn" title="Rename">✎</button>
-        <button class="sv-folder-btn sv-delete-btn" title="Delete">✕</button>
-      </div>
-    `
-
-    // rename
-    card.querySelector('.sv-rename-btn').addEventListener('click', async (e) => {
-      e.stopPropagation()
-      startRename(folder.id, card.querySelector('.sv-folder-name'), folders)
-    })
-
-    // delete
-    card.querySelector('.sv-delete-btn').addEventListener('click', async (e) => {
-      e.stopPropagation()
-      card.style.opacity = '0.4'
-      card.style.pointerEvents = 'none'
-      const updated = await Storage.deleteFolder(folder.id)
-      renderFolders(updated, container)
-    })
-
-    grid.appendChild(card)
-  })
-
-  // add folder button (dashed)
-  const addCard = document.createElement('div')
-  addCard.className = 'sv-folder-card sv-add-folder'
-  addCard.innerHTML = `
-    <div class="sv-add-icon">+</div>
-    <div class="sv-folder-name" style="color: rgba(255,255,255,0.35)">New folder</div>
-  `
-  addCard.addEventListener('click', () => startCreate(container, folders))
-  grid.appendChild(addCard)
-}
-
-// ---- INLINE CREATE ----
-function startCreate(container, folders) {
-  // replace add card with an input card
-  const grid = container.querySelector('#sv-folder-grid')
-  const addCard = grid.querySelector('.sv-add-folder')
-
-  const inputCard = document.createElement('div')
-  inputCard.className = 'sv-folder-card sv-naming-card'
-  inputCard.innerHTML = `
-    <div class="sv-folder-icon">${folderSVG()}</div>
-    <input class="sv-folder-input" type="text" placeholder="Folder name" maxlength="32" />
-  `
-  grid.replaceChild(inputCard, addCard)
-
-  const input = inputCard.querySelector('.sv-folder-input')
-  input.focus()
-
-  async function confirm() {
-    const name = input.value.trim()
-    if (name) {
-      const updated = await Storage.createFolder(name)
-      renderFolders(updated, container)
-    } else {
-      renderFolders(folders, container)
-    }
-  }
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') confirm()
-    if (e.key === 'Escape') renderFolders(folders, container)
-    e.stopPropagation()
-  })
-
-  input.addEventListener('blur', () => {
-    setTimeout(confirm, 150)
-  })
-}
-
-// ---- INLINE RENAME ----
-function startRename(id, nameEl, folders) {
-  const current = nameEl.textContent
-  const input = document.createElement('input')
-  input.className = 'sv-folder-input'
-  input.value = current
-  input.maxLength = 32
-  nameEl.replaceWith(input)
-  input.focus()
-  input.select()
-
-  async function confirm() {
-    const name = input.value.trim() || current
-    const updated = await Storage.renameFolder(id, name)
-    const body = document.getElementById('sitevault-body')
-    renderFolders(updated, body)
-  }
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') confirm()
-    if (e.key === 'Escape') {
-      input.replaceWith(nameEl)
-    }
-    e.stopPropagation()
-  })
-
-  input.addEventListener('blur', () => setTimeout(confirm, 150))
 }
 
 // ---- ESCAPE HTML ----
@@ -186,7 +104,283 @@ function filterFolders(folders, query) {
   return folders.filter(f => f.name.toLowerCase().includes(q))
 }
 
+// ================================================================
+// ---- VIEW: FOLDER GRID ----
+// ================================================================
+function renderFolders(folders, container) {
+  container.innerHTML = ''
+
+  const grid = document.createElement('div')
+  grid.id = 'sv-folder-grid'
+  container.appendChild(grid)
+
+  folders.forEach(folder => {
+    const card = document.createElement('div')
+    card.className = 'sv-folder-card'
+    card.dataset.id = folder.id
+    card.innerHTML = `
+      <div class="sv-folder-icon">${folderSVG()}</div>
+      <div class="sv-folder-name">${escapeHTML(folder.name)}</div>
+      <div class="sv-folder-count">${folder.sites.length} ${folder.sites.length === 1 ? 'site' : 'sites'}</div>
+      <div class="sv-folder-actions">
+        <button class="sv-folder-btn sv-rename-btn" title="Rename">✎</button>
+        <button class="sv-folder-btn sv-delete-btn" title="Delete">✕</button>
+      </div>
+    `
+
+    // open folder on click (not on action buttons)
+    card.addEventListener('click', async () => {
+      const fresh = await Storage.getFolders()
+      const f = fresh.find(x => x.id === folder.id)
+      if (f) renderSites(f, container)
+    })
+
+    card.querySelector('.sv-rename-btn').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      startRename(folder.id, card.querySelector('.sv-folder-name'), folders)
+    })
+
+    card.querySelector('.sv-delete-btn').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      card.style.opacity = '0.4'
+      card.style.pointerEvents = 'none'
+      const updated = await Storage.deleteFolder(folder.id)
+      renderFolders(updated, container)
+    })
+
+    grid.appendChild(card)
+  })
+
+  // add folder button
+  const addCard = document.createElement('div')
+  addCard.className = 'sv-folder-card sv-add-folder'
+  addCard.innerHTML = `
+    <div class="sv-add-icon">+</div>
+    <div class="sv-folder-name" style="color: rgba(255,255,255,0.35)">New folder</div>
+  `
+  addCard.addEventListener('click', () => startCreate(container, folders))
+  grid.appendChild(addCard)
+}
+
+// ================================================================
+// ---- VIEW: SITES INSIDE A FOLDER ----
+// ================================================================
+function renderSites(folder, container) {
+  container.innerHTML = ''
+
+  // ---- FOLDER HEADER (back + title + save button) ----
+  const header = document.createElement('div')
+  header.id = 'sv-sites-header'
+  header.innerHTML = `
+    <button id="sv-back-btn" title="Back to folders">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <span id="sv-folder-title">${escapeHTML(folder.name)}</span>
+    <button id="sv-save-tab-btn" title="Save current tab to this folder">
+      + Save tab
+    </button>
+  `
+  container.appendChild(header)
+
+  // back button
+  header.querySelector('#sv-back-btn').addEventListener('click', async () => {
+    const folders = await Storage.getFolders()
+    renderFolders(folders, container)
+  })
+
+  // save tab button
+  const saveBtn = header.querySelector('#sv-save-tab-btn')
+  saveBtn.addEventListener('click', async () => {
+    const info = getCurrentTabInfo()
+
+    // check if already saved
+    const fresh = await Storage.getFolders()
+    const f = fresh.find(x => x.id === folder.id)
+    if (f && f.sites.some(s => s.url === info.url)) {
+      showToast('Already saved in this folder')
+      return
+    }
+
+    saveBtn.textContent = 'Saving...'
+    saveBtn.disabled = true
+
+    const site = {
+      id: 's_' + Date.now(),
+      title: info.title,
+      url: info.url,
+      favicon: info.favicon,
+      savedAt: Date.now()
+    }
+
+    const updated = await Storage.addSite(folder.id, site)
+    const updatedFolder = updated.find(x => x.id === folder.id)
+    renderSites(updatedFolder, container)
+  })
+
+  // ---- SITES LIST ----
+  const list = document.createElement('div')
+  list.id = 'sv-sites-list'
+  container.appendChild(list)
+
+  if (folder.sites.length === 0) {
+    list.innerHTML = `
+      <div id="sv-empty-state">
+        <div id="sv-empty-icon">🔖</div>
+        <div id="sv-empty-text">No sites saved yet</div>
+        <div id="sv-empty-sub">Click "+ Save tab" to save this page</div>
+      </div>
+    `
+    return
+  }
+
+  folder.sites.forEach(site => {
+    const row = document.createElement('div')
+    row.className = 'sv-site-row'
+    row.innerHTML = `
+      <img class="sv-site-favicon" src="${escapeHTML(site.favicon)}" alt="" />
+      <div class="sv-site-info">
+        <div class="sv-site-title">${escapeHTML(site.title)}</div>
+        <div class="sv-site-url">${escapeHTML(site.url)}</div>
+      </div>
+      <button class="sv-site-delete-btn" title="Remove">✕</button>
+    `
+
+    // favicon fallback
+    const img = row.querySelector('.sv-site-favicon')
+    img.addEventListener('error', () => {
+      img.style.display = 'none'
+      const fallback = document.createElement('div')
+      fallback.className = 'sv-site-favicon-fallback'
+      fallback.textContent = site.title.charAt(0).toUpperCase()
+      img.parentNode.insertBefore(fallback, img)
+    })
+
+    // open site on click
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.sv-site-delete-btn')) return
+      window.open(site.url, '_blank')
+    })
+
+    // delete site
+    row.querySelector('.sv-site-delete-btn').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      row.style.opacity = '0.4'
+      row.style.pointerEvents = 'none'
+      const updated = await Storage.deleteSite(folder.id, site.id)
+      const updatedFolder = updated.find(x => x.id === folder.id)
+      renderSites(updatedFolder, container)
+    })
+
+    list.appendChild(row)
+  })
+}
+
+// ================================================================
+// ---- TOAST NOTIFICATION ----
+// ================================================================
+function showToast(message) {
+  const existing = document.getElementById('sv-toast')
+  if (existing) existing.remove()
+
+  const toast = document.createElement('div')
+  toast.id = 'sv-toast'
+  toast.textContent = message
+  document.getElementById('sitevault-tab').appendChild(toast)
+
+  setTimeout(() => toast.classList.add('visible'), 10)
+  setTimeout(() => {
+    toast.classList.remove('visible')
+    setTimeout(() => toast.remove(), 300)
+  }, 2000)
+}
+
+// ================================================================
+// ---- INLINE CREATE ----
+// ================================================================
+function startCreate(container, folders) {
+  const grid = container.querySelector('#sv-folder-grid')
+  const addCard = grid.querySelector('.sv-add-folder')
+
+  const inputCard = document.createElement('div')
+  inputCard.className = 'sv-folder-card sv-naming-card'
+  inputCard.innerHTML = `
+    <div class="sv-folder-icon">${folderSVG()}</div>
+    <input class="sv-folder-input" type="text" placeholder="Folder name" maxlength="32" />
+  `
+  grid.replaceChild(inputCard, addCard)
+
+  const input = inputCard.querySelector('.sv-folder-input')
+  input.focus()
+
+  let confirmed = false
+
+  async function confirm() {
+    if (confirmed) return
+    confirmed = true
+    const name = input.value.trim()
+    if (name) {
+      const updated = await Storage.createFolder(name)
+      renderFolders(updated, container)
+    } else {
+      renderFolders(folders, container)
+    }
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirm()
+    if (e.key === 'Escape') {
+      confirmed = true
+      renderFolders(folders, container)
+    }
+    e.stopPropagation()
+  })
+
+  input.addEventListener('blur', () => {
+    setTimeout(confirm, 150)
+  })
+}
+
+// ================================================================
+// ---- INLINE RENAME ----
+// ================================================================
+function startRename(id, nameEl, folders) {
+  const current = nameEl.textContent
+  const input = document.createElement('input')
+  input.className = 'sv-folder-input'
+  input.value = current
+  input.maxLength = 32
+  nameEl.replaceWith(input)
+  input.focus()
+  input.select()
+
+  let confirmed = false
+
+  async function confirm() {
+    if (confirmed) return
+    confirmed = true
+    const name = input.value.trim() || current
+    const updated = await Storage.renameFolder(id, name)
+    const body = document.getElementById('sitevault-body')
+    renderFolders(updated, body)
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirm()
+    if (e.key === 'Escape') {
+      confirmed = true
+      input.replaceWith(nameEl)
+    }
+    e.stopPropagation()
+  })
+
+  input.addEventListener('blur', () => setTimeout(confirm, 150))
+}
+
+// ================================================================
 // ---- MAIN ----
+// ================================================================
 window.addEventListener('load', () => {
 
   const overlay = document.createElement('div')
@@ -220,7 +414,6 @@ window.addEventListener('load', () => {
   `
   document.body.appendChild(tab)
 
-  // ---- INIT FOLDERS ----
   const body = document.getElementById('sitevault-body')
   let allFolders = []
 
@@ -229,39 +422,42 @@ window.addEventListener('load', () => {
     renderFolders(allFolders, body)
   })
 
-  // ---- SEARCH ----
+  // search — only works on folder grid view
   const searchInput = document.getElementById('sitevault-search')
   searchInput.addEventListener('input', () => {
-    const filtered = filterFolders(allFolders, searchInput.value)
-    renderFolders(filtered, body)
+    // only filter if we're on the folder grid
+    if (body.querySelector('#sv-folder-grid')) {
+      const filtered = filterFolders(allFolders, searchInput.value)
+      renderFolders(filtered, body)
+    }
   })
   searchInput.addEventListener('click', e => e.stopPropagation())
 
-  // ---- PRO TAB ----
   document.getElementById('pro-tab').addEventListener('click', (e) => {
     e.stopPropagation()
     window.open('https://sitevault.app/pricing', '_blank')
   })
 
-  // ---- SYNC ICON ----
   const syncIcon = document.getElementById('sync-icon')
   const syncSvg = document.getElementById('sync-svg')
   syncIcon.addEventListener('click', async (e) => {
     e.stopPropagation()
     syncSvg.classList.add('spinning')
     allFolders = await Storage.getFolders()
-    renderFolders(allFolders, body)
+    // only re-render if on folder grid
+    if (body.querySelector('#sv-folder-grid')) {
+      renderFolders(allFolders, body)
+    }
     setTimeout(() => syncSvg.classList.remove('spinning'), 800)
   })
 
-  // ---- OPEN / CLOSE ----
   let isOpen = false
 
   function openPanel() {
     tab.classList.add('open')
     overlay.classList.add('open')
     isOpen = true
-    // refresh folders on open
+    searchInput.value = ''
     Storage.getFolders().then(folders => {
       allFolders = folders
       renderFolders(allFolders, body)
