@@ -1,3 +1,342 @@
+/* ---- TAB ---- */
+#sitevault-tab {
+  position: fixed;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  width: 26px;
+  height: 80px;
+  background: rgba(6, 134, 255, 0.48);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 0 10px 10px 0;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    left 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    top 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.15s ease;
+}
+
+#sitevault-tab:hover { left: 0; background: rgba(6, 134, 255, 0.58); }
+
+/* ---- OPEN STATE ---- */
+#sitevault-tab.open {
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 33vw;
+  height: auto;
+  max-height: 70vh;
+  border-radius: 16px;
+  background: rgba(18, 22, 40, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  cursor: default;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ---- LABEL ---- */
+#sitevault-label {
+  position: absolute;
+  color: rgba(255,255,255,0.8);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+#sitevault-tab.open #sitevault-label { opacity: 0; }
+
+/* ---- PANEL CONTENT ---- */
+#sitevault-content {
+  position: relative;
+  top: 0; left: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.2s ease 0.15s;
+}
+
+#sitevault-tab.open #sitevault-content {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ---- HEADER ---- */
+#sitevault-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+#sync-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+#sync-icon:hover { background: rgba(255,255,255,0.1); }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+#sync-svg.spinning { animation: spin 0.8s linear infinite; }
+
+#sitevault-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#sitevault-search {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  width: 160px;
+  outline: none;
+  transition: background 0.2s, border 0.2s, width 0.2s;
+}
+#sitevault-search::placeholder { color: rgba(255,255,255,0.3); }
+#sitevault-search:focus {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+  width: 200px;
+}
+
+#pro-tab {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+#pro-tab:hover { background: rgba(255,255,255,0.22); }
+
+/* ---- BODY ---- */
+#sitevault-body {
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+
+/* ---- FOLDER GRID ---- */
+#sv-folder-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: min-content;
+  align-content: start;
+  gap: 10px;
+  padding: 16px 14px 10px;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+#sv-folder-grid::-webkit-scrollbar { width: 4px; }
+#sv-folder-grid::-webkit-scrollbar-track { background: transparent; }
+#sv-folder-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+/* ---- FOLDER CARD ---- */
+.sv-folder-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s ease, transform 0.15s ease;
+  gap: 6px;
+}
+
+.sv-folder-card:hover {
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-2px);
+}
+
+.sv-folder-card:hover .sv-folder-actions {
+  opacity: 1;
+}
+
+/* ---- FOLDER ICON (SVG wrapper) ---- */
+.sv-folder-icon {
+  width: 80px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sv-folder-icon svg {
+  width: 80px;
+  height: 68px;
+  filter: drop-shadow(0 4px 12px rgba(100,140,220,0.3));
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.sv-folder-card:hover .sv-folder-icon svg {
+  transform: scale(1.05) translateY(-2px);
+  filter: drop-shadow(0 8px 16px rgba(100,140,220,0.45));
+}
+
+/* ---- FOLDER NAME ---- */
+.sv-folder-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.92);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* ---- SITE COUNT ---- */
+.sv-folder-count {
+  font-size: 11px;
+  color: rgba(255,255,255,0.38);
+  text-align: center;
+}
+
+/* ---- ACTION BUTTONS (hover reveal) ---- */
+.sv-folder-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sv-folder-btn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+  padding: 0;
+}
+
+.sv-rename-btn:hover { background: rgba(100,160,255,0.25); color: #fff; }
+.sv-delete-btn:hover { background: rgba(255,80,80,0.25); color: #ff8080; }
+
+/* ---- ADD FOLDER CARD ---- */
+.sv-add-folder {
+  border: 1.5px dashed rgba(255,255,255,0.18);
+  cursor: pointer;
+  min-height: 130px;
+  justify-content: center;
+}
+
+.sv-add-folder:hover {
+  border-color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.04);
+  transform: translateY(-2px);
+}
+
+.sv-add-icon {
+  font-size: 26px;
+  color: rgba(255,255,255,0.3);
+  font-weight: 300;
+  line-height: 1;
+  transition: color 0.15s;
+  margin-bottom: 4px;
+}
+
+.sv-add-folder:hover .sv-add-icon {
+  color: rgba(255,255,255,0.55);
+}
+
+/* ---- NAMING CARD ---- */
+.sv-naming-card {
+  border: 1.5px solid rgba(100,160,255,0.4);
+  background: rgba(100,160,255,0.06);
+}
+
+/* ---- INLINE INPUT ---- */
+.sv-folder-input {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  width: 100%;
+  outline: none;
+  text-align: center;
+  transition: border 0.15s;
+}
+
+.sv-folder-input:focus {
+  border-color: rgba(100,160,255,0.6);
+}
+
+.sv-folder-input::placeholder {
+  color: rgba(255,255,255,0.3);
+}
+
+/* ---- OVERLAY ---- */
+#sitevault-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 999998;
+  background: rgba(0,0,0,0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#sitevault-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
 /* ================================================================
    SITES VIEW
    ================================================================ */
@@ -220,3 +559,156 @@
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ================================================================
+   FREE TIER — USAGE BAR
+   ================================================================ */
+#sv-usage-bar {
+  margin: 0 14px 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+#sv-usage-row, #sv-usage-row2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sv-usage-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.sv-usage-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.sv-usage-maxed {
+  color: #e05c5c;
+}
+
+#sv-usage-track {
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+#sv-usage-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0686ff, #5ba4ff);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+#sv-upgrade-link {
+  font-size: 11px;
+  color: rgba(6, 134, 255, 0.8);
+  cursor: pointer;
+  text-align: center;
+  padding-top: 2px;
+  transition: color 0.15s;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+#sv-upgrade-link:hover { color: #0686ff; }
+
+/* ---- LOCKED ADD CARD ---- */
+.sv-locked {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.sv-lock-icon {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+/* ================================================================
+   UPGRADE MODAL
+   ================================================================ */
+#sv-upgrade-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 12, 28, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  border-radius: 16px;
+}
+
+#sv-upgrade-box {
+  background: rgba(20, 24, 48, 0.98);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 28px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 240px;
+  text-align: center;
+}
+
+#sv-upgrade-icon {
+  font-size: 36px;
+  margin-bottom: 2px;
+}
+
+#sv-upgrade-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#sv-upgrade-body {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#sv-upgrade-cta {
+  margin-top: 6px;
+  background: #0686ff;
+  border: none;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 10px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s, transform 0.1s;
+}
+#sv-upgrade-cta:hover {
+  background: #0576e0;
+  transform: translateY(-1px);
+}
+
+#sv-upgrade-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.15s;
+}
+#sv-upgrade-close:hover { color: rgba(255,255,255,0.6); }

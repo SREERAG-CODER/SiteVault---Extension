@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "SiteVault",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A file manager for your browser — organize websites into folders, just like your OS.",
-  "permissions": ["tabs", "storage"],
+  "permissions": ["tabs", "storage", "bookmarks"],
   "action": {
     "default_title": "SiteVault Settings",
     "default_popup": "popup.html",

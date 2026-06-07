@@ -133,6 +133,56 @@ kbd {
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* ---- DIVIDER ---- */
+.divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0 -2px;
+}
+
+/* ---- IMPORT BUTTON ---- */
+#import-btn {
+  background: rgba(6, 134, 255, 0.25);
+  border: 1px solid rgba(6, 134, 255, 0.45);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, border 0.15s;
+}
+
+#import-btn:hover {
+  background: rgba(6, 134, 255, 0.4);
+  border-color: rgba(6, 134, 255, 0.7);
+}
+
+#import-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- IMPORT STATUS ---- */
+#import-status {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  min-height: 0;
+  transition: all 0.2s;
+  line-height: 1.4;
+}
+
+#import-status.success {
+  color: #5cb85c;
+}
+
+#import-status.error {
+  color: #e05c5c;
+}
+
 /* ---- FOOTER ---- */
 #footer {
   text-align: center;

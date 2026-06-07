@@ -1,4 +1,28 @@
+// ================================================================
+// ---- FREE TIER LIMITS ----
+// ================================================================
+const LIMITS = {
+  folders: 3,
+  sites: 50
+}
+
+// check if user is pro (stored in chrome.storage.sync)
+function isPro() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['isPro'], (data) => {
+      resolve(data.isPro === true)
+    })
+  })
+}
+
+// total sites across all folders
+function totalSites(folders) {
+  return folders.reduce((sum, f) => sum + f.sites.length, 0)
+}
+
+// ================================================================
 // ---- STORAGE ----
+// ================================================================
 const Storage = {
   getFolders() {
     return new Promise((resolve) => {
@@ -49,8 +73,9 @@ const Storage = {
   }
 }
 
+// ================================================================
 // ---- GET CURRENT TAB INFO ----
-// content scripts can read the current page directly
+// ================================================================
 function getCurrentTabInfo() {
   return {
     title: document.title || window.location.hostname,
@@ -60,7 +85,6 @@ function getCurrentTabInfo() {
 }
 
 function getFavicon() {
-  // try link[rel~=icon] variants
   const selectors = [
     'link[rel="icon"]',
     'link[rel="shortcut icon"]',
@@ -71,11 +95,12 @@ function getFavicon() {
     const el = document.querySelector(sel)
     if (el && el.href) return el.href
   }
-  // fallback to /favicon.ico
   return `${window.location.origin}/favicon.ico`
 }
 
+// ================================================================
 // ---- FOLDER SVG ----
+// ================================================================
 function folderSVG() {
   return `
     <svg width="96" height="80" viewBox="0 0 96 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -92,12 +117,66 @@ function folderSVG() {
   `
 }
 
+// ================================================================
+// ---- UPGRADE MODAL ----
+// ================================================================
+function showUpgradeModal(reason) {
+  // remove existing if any
+  const existing = document.getElementById('sv-upgrade-modal')
+  if (existing) existing.remove()
+
+  const messages = {
+    folders: {
+      title: 'Folder limit reached',
+      body: `Free plan includes ${LIMITS.folders} folders. Upgrade to Pro for unlimited folders.`
+    },
+    sites: {
+      title: 'Bookmark limit reached',
+      body: `Free plan includes ${LIMITS.sites} saved sites. Upgrade to Pro for unlimited bookmarks.`
+    }
+  }
+
+  const { title, body } = messages[reason] || messages.folders
+
+  const modal = document.createElement('div')
+  modal.id = 'sv-upgrade-modal'
+  modal.innerHTML = `
+    <div id="sv-upgrade-box">
+      <div id="sv-upgrade-icon">🔒</div>
+      <div id="sv-upgrade-title">${title}</div>
+      <div id="sv-upgrade-body">${body}</div>
+      <button id="sv-upgrade-cta">Upgrade to Pro — $4/mo</button>
+      <button id="sv-upgrade-close">Maybe later</button>
+    </div>
+  `
+
+  document.getElementById('sitevault-tab').appendChild(modal)
+
+  modal.querySelector('#sv-upgrade-cta').addEventListener('click', () => {
+    window.open('https://sitevault.app/pricing', '_blank')
+    modal.remove()
+  })
+
+  modal.querySelector('#sv-upgrade-close').addEventListener('click', () => {
+    modal.remove()
+  })
+
+  // also close on backdrop click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove()
+  })
+}
+
+// ================================================================
 // ---- ESCAPE HTML ----
+// ================================================================
 function escapeHTML(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
+// ================================================================
 // ---- SEARCH FILTER ----
+// ================================================================
 function filterFolders(folders, query) {
   if (!query) return folders
   const q = query.toLowerCase()
@@ -128,7 +207,6 @@ function renderFolders(folders, container) {
       </div>
     `
 
-    // open folder on click (not on action buttons)
     card.addEventListener('click', async () => {
       const fresh = await Storage.getFolders()
       const f = fresh.find(x => x.id === folder.id)
@@ -151,15 +229,55 @@ function renderFolders(folders, container) {
     grid.appendChild(card)
   })
 
-  // add folder button
+  // ---- ADD FOLDER CARD (with limit check) ----
+  const atFolderLimit = folders.length >= LIMITS.folders
   const addCard = document.createElement('div')
-  addCard.className = 'sv-folder-card sv-add-folder'
-  addCard.innerHTML = `
-    <div class="sv-add-icon">+</div>
-    <div class="sv-folder-name" style="color: rgba(255,255,255,0.35)">New folder</div>
-  `
-  addCard.addEventListener('click', () => startCreate(container, folders))
+  addCard.className = 'sv-folder-card sv-add-folder' + (atFolderLimit ? ' sv-locked' : '')
+  addCard.innerHTML = atFolderLimit
+    ? `
+        <div class="sv-lock-icon">🔒</div>
+        <div class="sv-folder-name" style="color: rgba(255,255,255,0.35)">Pro only</div>
+        <div class="sv-folder-count">${folders.length}/${LIMITS.folders} folders used</div>
+      `
+    : `
+        <div class="sv-add-icon">+</div>
+        <div class="sv-folder-name" style="color: rgba(255,255,255,0.35)">New folder</div>
+      `
+
+  addCard.addEventListener('click', () => {
+    if (atFolderLimit) {
+      showUpgradeModal('folders')
+    } else {
+      startCreate(container, folders)
+    }
+  })
+
   grid.appendChild(addCard)
+
+  // ---- FREE TIER USAGE BAR ----
+  const allSites = totalSites(folders)
+  const usageBar = document.createElement('div')
+  usageBar.id = 'sv-usage-bar'
+  usageBar.innerHTML = `
+    <div id="sv-usage-row">
+      <span class="sv-usage-label">Folders</span>
+      <span class="sv-usage-count ${folders.length >= LIMITS.folders ? 'sv-usage-maxed' : ''}">${folders.length} / ${LIMITS.folders}</span>
+    </div>
+    <div id="sv-usage-row2">
+      <span class="sv-usage-label">Bookmarks</span>
+      <span class="sv-usage-count ${allSites >= LIMITS.sites ? 'sv-usage-maxed' : ''}">${allSites} / ${LIMITS.sites}</span>
+    </div>
+    <div id="sv-usage-track">
+      <div id="sv-usage-fill" style="width: ${Math.min(100, (allSites / LIMITS.sites) * 100)}%"></div>
+    </div>
+    <div id="sv-upgrade-link">Upgrade to Pro for unlimited →</div>
+  `
+
+  usageBar.querySelector('#sv-upgrade-link').addEventListener('click', () => {
+    window.open('https://sitevault.app/pricing', '_blank')
+  })
+
+  container.appendChild(usageBar)
 }
 
 // ================================================================
@@ -168,7 +286,6 @@ function renderFolders(folders, container) {
 function renderSites(folder, container) {
   container.innerHTML = ''
 
-  // ---- FOLDER HEADER (back + title + save button) ----
   const header = document.createElement('div')
   header.id = 'sv-sites-header'
   header.innerHTML = `
@@ -184,22 +301,28 @@ function renderSites(folder, container) {
   `
   container.appendChild(header)
 
-  // back button
   header.querySelector('#sv-back-btn').addEventListener('click', async () => {
     const folders = await Storage.getFolders()
     renderFolders(folders, container)
   })
 
-  // save tab button
   const saveBtn = header.querySelector('#sv-save-tab-btn')
   saveBtn.addEventListener('click', async () => {
     const info = getCurrentTabInfo()
 
-    // check if already saved
     const fresh = await Storage.getFolders()
     const f = fresh.find(x => x.id === folder.id)
+
+    // check duplicate
     if (f && f.sites.some(s => s.url === info.url)) {
       showToast('Already saved in this folder')
+      return
+    }
+
+    // check sites limit
+    const pro = await isPro()
+    if (!pro && totalSites(fresh) >= LIMITS.sites) {
+      showUpgradeModal('sites')
       return
     }
 
@@ -219,7 +342,6 @@ function renderSites(folder, container) {
     renderSites(updatedFolder, container)
   })
 
-  // ---- SITES LIST ----
   const list = document.createElement('div')
   list.id = 'sv-sites-list'
   container.appendChild(list)
@@ -247,7 +369,6 @@ function renderSites(folder, container) {
       <button class="sv-site-delete-btn" title="Remove">✕</button>
     `
 
-    // favicon fallback
     const img = row.querySelector('.sv-site-favicon')
     img.addEventListener('error', () => {
       img.style.display = 'none'
@@ -257,13 +378,11 @@ function renderSites(folder, container) {
       img.parentNode.insertBefore(fallback, img)
     })
 
-    // open site on click
     row.addEventListener('click', (e) => {
       if (e.target.closest('.sv-site-delete-btn')) return
       window.open(site.url, '_blank')
     })
 
-    // delete site
     row.querySelector('.sv-site-delete-btn').addEventListener('click', async (e) => {
       e.stopPropagation()
       row.style.opacity = '0.4'
@@ -422,10 +541,8 @@ window.addEventListener('load', () => {
     renderFolders(allFolders, body)
   })
 
-  // search — only works on folder grid view
   const searchInput = document.getElementById('sitevault-search')
   searchInput.addEventListener('input', () => {
-    // only filter if we're on the folder grid
     if (body.querySelector('#sv-folder-grid')) {
       const filtered = filterFolders(allFolders, searchInput.value)
       renderFolders(filtered, body)
@@ -444,7 +561,6 @@ window.addEventListener('load', () => {
     e.stopPropagation()
     syncSvg.classList.add('spinning')
     allFolders = await Storage.getFolders()
-    // only re-render if on folder grid
     if (body.querySelector('#sv-folder-grid')) {
       renderFolders(allFolders, body)
     }
