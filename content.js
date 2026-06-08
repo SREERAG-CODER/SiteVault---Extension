@@ -6,7 +6,11 @@ const LIMITS = {
   sites: 50
 }
 
-// check if user is pro (stored in chrome.storage.sync)
+// ================================================================
+// ---- GLOBAL STATE ----
+// ================================================================
+let allFolders = []
+
 function isPro() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['isPro'], (data) => {
@@ -15,7 +19,6 @@ function isPro() {
   })
 }
 
-// total sites across all folders
 function totalSites(folders) {
   return folders.reduce((sum, f) => sum + f.sites.length, 0)
 }
@@ -74,16 +77,10 @@ const Storage = {
 }
 
 // ================================================================
-// AUTH MODULE
-// Paste this block into content.js, near the top after the LIMITS
-// and Storage sections but before renderFolders.
+// ---- AUTH ----
 // ================================================================
+const API_URL = 'https://your-app-name.onrender.com' // <- update after deploying
 
-const API_URL = 'https://your-app-name.onrender.com' // ← update after deploying
-
-// ----------------------------------------------------------------
-// Auth storage helpers
-// ----------------------------------------------------------------
 const Auth = {
   getSession() {
     return new Promise((resolve) => {
@@ -104,18 +101,32 @@ const Auth = {
   }
 }
 
-// ----------------------------------------------------------------
-// renderAuthScreen(container)
-// Renders the login/signup UI into #sitevault-body
-// ----------------------------------------------------------------
+// ================================================================
+// ---- HEADER VISIBILITY HELPERS ----
+// ================================================================
+function hideHeader() {
+  const header = document.getElementById('sitevault-header')
+  if (header) header.style.display = 'none'
+}
+
+function showHeader() {
+  const header = document.getElementById('sitevault-header')
+  if (header) header.style.display = ''
+}
+
+// ================================================================
+// ---- RENDER AUTH SCREEN ----
+// ================================================================
 function renderAuthScreen(container) {
   container.innerHTML = ''
 
-  // Remove usage bar if somehow present
+  // Hide the top header bar on the login screen
+  hideHeader()
+
   const bar = document.getElementById('sv-usage-bar')
   if (bar) bar.remove()
 
-  let mode = 'login' // 'login' | 'signup'
+  let mode = 'login'
 
   function buildScreen() {
     container.innerHTML = `
@@ -125,7 +136,6 @@ function renderAuthScreen(container) {
         <div id="sv-auth-title">SiteVault</div>
         <div id="sv-auth-subtitle">Sign in to save and sync your bookmarks</div>
 
-        <!-- Google -->
         <button id="sv-google-btn">
           <svg class="sv-google-icon" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -142,7 +152,7 @@ function renderAuthScreen(container) {
         <div id="sv-auth-form">
           ${mode === 'signup' ? `<input class="sv-auth-input" id="sv-auth-name" type="text" placeholder="Your name" autocomplete="name" />` : ''}
           <input class="sv-auth-input" id="sv-auth-email" type="email" placeholder="Email address" autocomplete="email" />
-          <input class="sv-auth-input" id="sv-auth-password" type="password" placeholder="Password ${mode === 'signup' ? '(min 8 chars)' : ''}" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" />
+          <input class="sv-auth-input" id="sv-auth-password" type="password" placeholder="Password${mode === 'signup' ? ' (min 8 chars)' : ''}" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" />
           <div id="sv-auth-error"></div>
           <button class="sv-auth-btn" id="sv-auth-submit">
             ${mode === 'login' ? 'Sign in' : 'Create account'}
@@ -154,10 +164,11 @@ function renderAuthScreen(container) {
           <button id="sv-auth-toggle-btn">${mode === 'login' ? 'Sign up' : 'Sign in'}</button>
         </div>
 
+        <button id="sv-skip-btn">Skip for now →</button>
+
       </div>
     `
 
-    // ---- Helpers ----
     const errorEl = document.getElementById('sv-auth-error')
     const submitBtn = document.getElementById('sv-auth-submit')
 
@@ -168,18 +179,15 @@ function renderAuthScreen(container) {
     }
 
     function onSuccess(user) {
-      // Swap auth screen for the main panel
+      showHeader()
       renderMainPanel(container, user)
     }
 
-    // ---- Google ----
     document.getElementById('sv-google-btn').addEventListener('click', (e) => {
       e.stopPropagation()
       const btn = document.getElementById('sv-google-btn')
       btn.disabled = true
-      btn.querySelector('span') && (btn.lastChild.textContent = 'Signing in...')
       setError('')
-
       chrome.runtime.sendMessage({ action: 'googleSignIn' }, (res) => {
         btn.disabled = false
         if (res?.error) { setError(res.error); return }
@@ -187,7 +195,6 @@ function renderAuthScreen(container) {
       })
     })
 
-    // ---- Email submit ----
     document.getElementById('sv-auth-submit').addEventListener('click', async (e) => {
       e.stopPropagation()
       setError('')
@@ -221,7 +228,6 @@ function renderAuthScreen(container) {
       }
     })
 
-    // Allow Enter key to submit
     container.querySelectorAll('.sv-auth-input').forEach(input => {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') document.getElementById('sv-auth-submit').click()
@@ -229,26 +235,30 @@ function renderAuthScreen(container) {
       })
     })
 
-    // ---- Toggle login/signup ----
     document.getElementById('sv-auth-toggle-btn').addEventListener('click', (e) => {
       e.stopPropagation()
       mode = mode === 'login' ? 'signup' : 'login'
       buildScreen()
+    })
+
+    document.getElementById('sv-skip-btn').addEventListener('click', (e) => {
+      e.stopPropagation()
+      showHeader()
+      renderMainPanel(container, { name: 'Local User', email: '', avatar_url: null })
     })
   }
 
   buildScreen()
 }
 
-// ----------------------------------------------------------------
-// renderMainPanel(container, user)
-// Called after successful auth — renders the folder view + updates header
-// ----------------------------------------------------------------
+// ================================================================
+// ---- RENDER MAIN PANEL (called after successful auth) ----
+// ================================================================
 function renderMainPanel(container, user) {
-  // Update the header to show user info instead of just sync icon
+  showHeader()
+
   const headerRight = document.getElementById('sitevault-header-right')
   if (headerRight) {
-    // Build avatar
     const avatarHTML = user.avatar_url
       ? `<img id="sv-user-avatar" src="${escapeHTML(user.avatar_url)}" alt="" />`
       : `<div id="sv-user-avatar-fallback">${(user.name || user.email || '?').charAt(0).toUpperCase()}</div>`
@@ -265,35 +275,21 @@ function renderMainPanel(container, user) {
       e.stopPropagation()
       chrome.runtime.sendMessage({ action: 'signOut' }, () => {
         renderAuthScreen(container)
-        // Reset header
-        const hr = document.getElementById('sitevault-header-right')
-        if (hr) {
-          hr.innerHTML = `
-            <input type="text" id="sitevault-search" placeholder="Search folders..." />
-            <span id="pro-tab">PRO</span>
-          `
-          document.getElementById('pro-tab').addEventListener('click', (e) => {
-            e.stopPropagation()
-            window.open('https://sitevault.app/pricing', '_blank')
-          })
-          bindSearch(container)
-        }
       })
     })
 
     bindSearch(container)
   }
 
-  // Load folders
   Storage.getFolders().then(folders => {
     allFolders = folders
     renderFolders(allFolders, container)
   })
 }
 
-// ----------------------------------------------------------------
-// bindSearch — wire up the search input after it's rebuilt
-// ----------------------------------------------------------------
+// ================================================================
+// ---- BIND SEARCH ----
+// ================================================================
 function bindSearch(container) {
   const searchInput = document.getElementById('sitevault-search')
   if (!searchInput) return
@@ -305,35 +301,6 @@ function bindSearch(container) {
   })
   searchInput.addEventListener('click', e => e.stopPropagation())
 }
-
-// ================================================================
-// HOW TO WIRE THIS INTO THE MAIN() at the bottom of content.js
-// ================================================================
-// Replace the Storage.getFolders().then(...) block in window.addEventListener('load')
-// with this auth-aware startup:
-//
-//   Auth.getSession().then(({ token, user }) => {
-//     if (token && user) {
-//       renderMainPanel(body, user)
-//     } else {
-//       renderAuthScreen(body)
-//     }
-//   })
-//
-// Also replace the openPanel() function's Storage.getFolders() call with:
-//
-//   function openPanel() {
-//     tab.classList.add('open')
-//     overlay.classList.add('open')
-//     isOpen = true
-//     Auth.getSession().then(({ token, user }) => {
-//       if (token && user) {
-//         renderMainPanel(body, user)
-//       } else {
-//         renderAuthScreen(body)
-//       }
-//     })
-//   }
 
 // ================================================================
 // ---- GET CURRENT TAB INFO ----
@@ -383,7 +350,6 @@ function folderSVG() {
 // ---- UPGRADE MODAL ----
 // ================================================================
 function showUpgradeModal(reason) {
-  // remove existing if any
   const existing = document.getElementById('sv-upgrade-modal')
   if (existing) existing.remove()
 
@@ -418,15 +384,8 @@ function showUpgradeModal(reason) {
     window.open('https://sitevault.app/pricing', '_blank')
     modal.remove()
   })
-
-  modal.querySelector('#sv-upgrade-close').addEventListener('click', () => {
-    modal.remove()
-  })
-
-  // also close on backdrop click
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) modal.remove()
-  })
+  modal.querySelector('#sv-upgrade-close').addEventListener('click', () => modal.remove())
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove() })
 }
 
 // ================================================================
@@ -447,18 +406,13 @@ function filterFolders(folders, query) {
 
 // ================================================================
 // ---- VIEW: FOLDER GRID ----
-// Replace the entire renderFolders() function in content.js with this.
 // ================================================================
 function renderFolders(folders, container) {
-  // container = #sitevault-body
-
-  // Remove any existing usage bar that was appended to #sitevault-content
   const existingUsageBar = document.getElementById('sv-usage-bar')
   if (existingUsageBar) existingUsageBar.remove()
 
   container.innerHTML = ''
 
-  // Folder view wrapper (fills flex body above the pinned usage bar)
   const folderView = document.createElement('div')
   folderView.id = 'sv-folder-view'
   container.appendChild(folderView)
@@ -503,7 +457,6 @@ function renderFolders(folders, container) {
     grid.appendChild(card)
   })
 
-  // ---- ADD FOLDER CARD (with limit check) ----
   const atFolderLimit = folders.length >= LIMITS.folders
   const addCard = document.createElement('div')
   addCard.className = 'sv-folder-card sv-add-folder' + (atFolderLimit ? ' sv-locked' : '')
@@ -519,18 +472,12 @@ function renderFolders(folders, container) {
       `
 
   addCard.addEventListener('click', () => {
-    if (atFolderLimit) {
-      showUpgradeModal('folders')
-    } else {
-      startCreate(container, folders)
-    }
+    if (atFolderLimit) showUpgradeModal('folders')
+    else startCreate(container, folders)
   })
 
   grid.appendChild(addCard)
 
-  // ---- FREE TIER USAGE BAR ----
-  // Appended to #sitevault-content (parent of #sitevault-body), not the body itself,
-  // so it stays pinned at the bottom regardless of grid scroll.
   const allSites = totalSites(folders)
   const usageBar = document.createElement('div')
   usageBar.id = 'sv-usage-bar'
@@ -553,9 +500,9 @@ function renderFolders(folders, container) {
     window.open('https://sitevault.app/pricing', '_blank')
   })
 
-  // Append to #sitevault-content so it's a sibling of #sitevault-body, pinned at bottom
   document.getElementById('sitevault-content').appendChild(usageBar)
 }
+
 // ================================================================
 // ---- VIEW: SITES INSIDE A FOLDER ----
 // ================================================================
@@ -585,17 +532,14 @@ function renderSites(folder, container) {
   const saveBtn = header.querySelector('#sv-save-tab-btn')
   saveBtn.addEventListener('click', async () => {
     const info = getCurrentTabInfo()
-
     const fresh = await Storage.getFolders()
     const f = fresh.find(x => x.id === folder.id)
 
-    // check duplicate
     if (f && f.sites.some(s => s.url === info.url)) {
       showToast('Already saved in this folder')
       return
     }
 
-    // check sites limit
     const pro = await isPro()
     if (!pro && totalSites(fresh) >= LIMITS.sites) {
       showUpgradeModal('sites')
@@ -725,16 +669,11 @@ function startCreate(container, folders) {
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') confirm()
-    if (e.key === 'Escape') {
-      confirmed = true
-      renderFolders(folders, container)
-    }
+    if (e.key === 'Escape') { confirmed = true; renderFolders(folders, container) }
     e.stopPropagation()
   })
 
-  input.addEventListener('blur', () => {
-    setTimeout(confirm, 150)
-  })
+  input.addEventListener('blur', () => setTimeout(confirm, 150))
 }
 
 // ================================================================
@@ -763,10 +702,7 @@ function startRename(id, nameEl, folders) {
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') confirm()
-    if (e.key === 'Escape') {
-      confirmed = true
-      input.replaceWith(nameEl)
-    }
+    if (e.key === 'Escape') { confirmed = true; input.replaceWith(nameEl) }
     e.stopPropagation()
   })
 
@@ -810,21 +746,17 @@ window.addEventListener('load', () => {
   document.body.appendChild(tab)
 
   const body = document.getElementById('sitevault-body')
-  let allFolders = []
 
-  Storage.getFolders().then(folders => {
-    allFolders = folders
-    renderFolders(allFolders, body)
-  })
-
-  const searchInput = document.getElementById('sitevault-search')
-  searchInput.addEventListener('input', () => {
-    if (body.querySelector('#sv-folder-grid')) {
-      const filtered = filterFolders(allFolders, searchInput.value)
-      renderFolders(filtered, body)
+  // ---- AUTH-AWARE STARTUP ----
+  Auth.getSession().then(({ token, user }) => {
+    if (token && user) {
+      renderMainPanel(body, user)
+    } else {
+      renderAuthScreen(body)
     }
   })
-  searchInput.addEventListener('click', e => e.stopPropagation())
+
+  document.getElementById('sitevault-search').addEventListener('click', e => e.stopPropagation())
 
   document.getElementById('pro-tab').addEventListener('click', (e) => {
     e.stopPropagation()
@@ -849,10 +781,14 @@ window.addEventListener('load', () => {
     tab.classList.add('open')
     overlay.classList.add('open')
     isOpen = true
-    searchInput.value = ''
-    Storage.getFolders().then(folders => {
-      allFolders = folders
-      renderFolders(allFolders, body)
+    const si = document.getElementById('sitevault-search')
+    if (si) si.value = ''
+    Auth.getSession().then(({ token, user }) => {
+      if (token && user) {
+        renderMainPanel(body, user)
+      } else {
+        renderAuthScreen(body)
+      }
     })
   }
 
