@@ -1,7 +1,7 @@
 // ================================================================
 // CONFIG — update this after deploying to Render
 // ================================================================
-const API_URL = 'https://your-app-name.onrender.com' // ← change this
+const API_URL = 'http://localhost:5000'
 
 const GOOGLE_CLIENT_ID = '100246703007-0vri94jk829bdntumivv2br7e13oihqs.apps.googleusercontent.com'
 
@@ -83,45 +83,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // ---- GOOGLE SIGN IN ----
   if (message.action === 'googleSignIn') {
-    const redirectUri = chrome.identity.getRedirectURL()
-    const authUrl =
-      'https://accounts.google.com/o/oauth2/v2/auth' +
-      `?client_id=${GOOGLE_CLIENT_ID}` +
-      `&response_type=token` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`
-
-    chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, async (responseUrl) => {
-      if (chrome.runtime.lastError || !responseUrl) {
-        sendResponse({ error: chrome.runtime.lastError?.message || 'Google sign-in cancelled' })
-        return
+    try {
+      if (typeof chrome === 'undefined' || !chrome.identity) {
+        sendResponse({ error: 'chrome.identity is undefined. Please reload the extension in chrome://extensions and refresh the page to apply permissions.' })
+        return true
       }
+      const redirectUri = chrome.identity.getRedirectURL()
+      const authUrl =
+        'https://accounts.google.com/o/oauth2/v2/auth' +
+        `?client_id=${GOOGLE_CLIENT_ID}` +
+        `&response_type=token` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`
 
-      const params = new URLSearchParams(new URL(responseUrl).hash.substring(1))
-      const token = params.get('access_token')
-      if (!token) {
-        sendResponse({ error: 'No access token returned' })
-        return
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ access_token: token })
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          sendResponse({ error: data.error || 'Google sign-in failed' })
+      chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, async (responseUrl) => {
+        if (chrome.runtime.lastError || !responseUrl) {
+          sendResponse({ error: chrome.runtime.lastError?.message || 'Google sign-in cancelled' })
           return
         }
 
-        await chrome.storage.sync.set({ authToken: data.token, authUser: data.user })
-        sendResponse({ success: true, user: data.user })
-      } catch (err) {
-        sendResponse({ error: 'Network error — check your connection' })
-      }
-    })
+        const params = new URLSearchParams(new URL(responseUrl).hash.substring(1))
+        const token = params.get('access_token')
+        if (!token) {
+          sendResponse({ error: 'No access token returned from Google' })
+          return
+        }
+
+        try {
+          const res = await fetch(`${API_URL}/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: token })
+          })
+          const data = await res.json()
+          if (!res.ok) {
+            sendResponse({ error: data.error || 'Google sign-in failed' })
+            return
+          }
+
+          await chrome.storage.sync.set({ authToken: data.token, authUser: data.user })
+          sendResponse({ success: true, user: data.user })
+        } catch (err) {
+          sendResponse({ error: 'Network error connecting to auth server — check your connection' })
+        }
+      })
+    } catch (err) {
+      sendResponse({ error: 'OAuth initialization error: ' + err.message })
+    }
     return true
   }
 

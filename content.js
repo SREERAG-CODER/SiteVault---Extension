@@ -79,7 +79,7 @@ const Storage = {
 // ================================================================
 // ---- AUTH ----
 // ================================================================
-const API_URL = 'https://your-app-name.onrender.com' // <- update after deploying
+const API_URL = 'http://localhost:5000'
 
 const Auth = {
   getSession() {
@@ -188,11 +188,20 @@ function renderAuthScreen(container) {
       const btn = document.getElementById('sv-google-btn')
       btn.disabled = true
       setError('')
-      chrome.runtime.sendMessage({ action: 'googleSignIn' }, (res) => {
+      try {
+        chrome.runtime.sendMessage({ action: 'googleSignIn' }, (res) => {
+          btn.disabled = false
+          if (chrome.runtime.lastError) {
+            setError('Extension error: ' + chrome.runtime.lastError.message + '. Please reload the extension and refresh this page.')
+            return
+          }
+          if (res?.error) { setError(res.error); return }
+          if (res?.success) onSuccess(res.user)
+        })
+      } catch (err) {
         btn.disabled = false
-        if (res?.error) { setError(res.error); return }
-        if (res?.success) onSuccess(res.user)
-      })
+        setError('Extension connection error: ' + err.message + '. Please reload the extension and refresh this page.')
+      }
     })
 
     document.getElementById('sv-auth-submit').addEventListener('click', async (e) => {
@@ -273,9 +282,17 @@ function renderMainPanel(container, user) {
 
     document.getElementById('sv-signout-btn').addEventListener('click', async (e) => {
       e.stopPropagation()
-      chrome.runtime.sendMessage({ action: 'signOut' }, () => {
+      try {
+        chrome.runtime.sendMessage({ action: 'signOut' }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Sign out error:', chrome.runtime.lastError.message)
+          }
+          renderAuthScreen(container)
+        })
+      } catch (err) {
+        console.error('Sign out error:', err)
         renderAuthScreen(container)
-      })
+      }
     })
 
     bindSearch(container)
