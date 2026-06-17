@@ -1,7 +1,7 @@
 // ================================================================
 // CONFIG — update this after deploying to Render
 // ================================================================
-const API_URL = 'http://localhost:5000'
+const API_URL = 'https://sitevault-backend.onrender.com'
 
 const GOOGLE_CLIENT_ID = '100246703007-0vri94jk829bdntumivv2br7e13oihqs.apps.googleusercontent.com'
 

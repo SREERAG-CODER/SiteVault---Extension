@@ -79,7 +79,7 @@ const Storage = {
 // ================================================================
 // ---- AUTH ----
 // ================================================================
-const API_URL = 'http://localhost:5000'
+const API_URL = 'https://sitevault-backend.onrender.com'
 
 const Auth = {
   getSession() {
