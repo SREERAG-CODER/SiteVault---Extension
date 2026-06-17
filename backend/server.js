@@ -13,6 +13,15 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 app.use(cors());
 app.use(express.json());
 
+// ---- HEALTH CHECK / PING ENDPOINTS (For UptimeRobot to keep server alive) ----
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'SiteVault Backend is running' });
+});
+
 // Helper to load users from users.json
 function readUsers() {
   if (!fs.existsSync(USERS_FILE)) {
