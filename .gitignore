@@ -4,6 +4,7 @@ backend/node_modules/
 
 # Local database/user files
 backend/users.json
+backend/.env
 
 # OS files
 .DS_Store

@@ -10,13 +10,10 @@ const LIMITS = {
 // ---- GLOBAL STATE ----
 // ================================================================
 let allFolders = []
+let userIsPro = false
 
 function isPro() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['isPro'], (data) => {
-      resolve(data.isPro === true)
-    })
-  })
+  return userIsPro
 }
 
 function totalSites(folders) {
@@ -179,6 +176,7 @@ function renderAuthScreen(container) {
     }
 
     function onSuccess(user) {
+      userIsPro = user?.is_pro === true
       showHeader()
       renderMainPanel(container, user)
     }
@@ -252,6 +250,7 @@ function renderAuthScreen(container) {
 
     document.getElementById('sv-skip-btn').addEventListener('click', (e) => {
       e.stopPropagation()
+      userIsPro = false
       showHeader()
       renderMainPanel(container, { name: 'Local User', email: '', avatar_url: null })
     })
@@ -282,6 +281,7 @@ function renderMainPanel(container, user) {
 
     document.getElementById('sv-signout-btn').addEventListener('click', async (e) => {
       e.stopPropagation()
+      userIsPro = false
       try {
         chrome.runtime.sendMessage({ action: 'signOut' }, () => {
           if (chrome.runtime.lastError) {
@@ -474,7 +474,8 @@ function renderFolders(folders, container) {
     grid.appendChild(card)
   })
 
-  const atFolderLimit = folders.length >= LIMITS.folders
+  const pro = isPro()
+  const atFolderLimit = !pro && folders.length >= LIMITS.folders
   const addCard = document.createElement('div')
   addCard.className = 'sv-folder-card sv-add-folder' + (atFolderLimit ? ' sv-locked' : '')
   addCard.innerHTML = atFolderLimit
@@ -766,6 +767,7 @@ window.addEventListener('load', () => {
 
   // ---- AUTH-AWARE STARTUP ----
   Auth.getSession().then(({ token, user }) => {
+    userIsPro = user?.is_pro === true
     if (token && user) {
       renderMainPanel(body, user)
     } else {
@@ -801,6 +803,7 @@ window.addEventListener('load', () => {
     const si = document.getElementById('sitevault-search')
     if (si) si.value = ''
     Auth.getSession().then(({ token, user }) => {
+      userIsPro = user?.is_pro === true
       if (token && user) {
         renderMainPanel(body, user)
       } else {
