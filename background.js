@@ -3,6 +3,8 @@
 // ================================================================
 const API_URL = 'https://your-app-name.onrender.com' // ← change this
 
+const GOOGLE_CLIENT_ID = '100246703007-0vri94jk829bdntumivv2br7e13oihqs.apps.googleusercontent.com'
+
 // ================================================================
 // TOGGLE PANEL SHORTCUT
 // ================================================================
@@ -81,50 +83,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // ---- GOOGLE SIGN IN ----
   if (message.action === 'googleSignIn') {
-    // chrome.identity.getAuthToken gets a Google OAuth access token silently
-    // if user is signed into Chrome, or shows the account picker if not.
-    chrome.identity.getAuthToken({ interactive: true }, async (token) => {
-      if (chrome.runtime.lastError || !token) {
+    const redirectUri = chrome.identity.getRedirectURL()
+    const authUrl =
+      'https://accounts.google.com/o/oauth2/v2/auth' +
+      `?client_id=${GOOGLE_CLIENT_ID}` +
+      `&response_type=token` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}`
+
+    chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, async (responseUrl) => {
+      if (chrome.runtime.lastError || !responseUrl) {
         sendResponse({ error: chrome.runtime.lastError?.message || 'Google sign-in cancelled' })
         return
       }
 
+      const params = new URLSearchParams(new URL(responseUrl).hash.substring(1))
+      const token = params.get('access_token')
+      if (!token) {
+        sendResponse({ error: 'No access token returned' })
+        return
+      }
+
       try {
-        // Send the token to our backend to verify and create/fetch the user
         const res = await fetch(`${API_URL}/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: token })
         })
         const data = await res.json()
-
         if (!res.ok) {
           sendResponse({ error: data.error || 'Google sign-in failed' })
           return
         }
 
-        // Store token + user in chrome.storage.sync
-        await chrome.storage.sync.set({
-          authToken: data.token,
-          authUser: data.user
-        })
-
+        await chrome.storage.sync.set({ authToken: data.token, authUser: data.user })
         sendResponse({ success: true, user: data.user })
       } catch (err) {
         sendResponse({ error: 'Network error — check your connection' })
       }
     })
-    return true // keep channel open for async
+    return true
   }
 
   // ---- SIGN OUT ----
   if (message.action === 'signOut') {
-    // Remove cached Google token too, so next login shows account picker
-    chrome.identity.getAuthToken({ interactive: false }, (token) => {
-      if (token) {
-        chrome.identity.removeCachedAuthToken({ token }, () => {})
-      }
-    })
     chrome.storage.sync.remove(['authToken', 'authUser'], () => {
       sendResponse({ success: true })
     })
